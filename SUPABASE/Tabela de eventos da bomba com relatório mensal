@@ -1,0 +1,26 @@
+--Criar tabela de eventos da bomba
+CREATE TABLE bomba_eventos (
+    id BIGSERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    evento TEXT NOT NULL, -- 'LIGOU' ou 'DESLIGOU'
+    duracao_segundos FLOAT, -- preenchido apenas quando DESLIGOU
+    volume_m3 FLOAT, -- volume calculado
+    vazao_bomba FLOAT -- vazão configurada na bomba (m³/h)
+);
+
+-- Criar índices para consultas rápidas
+CREATE INDEX idx_bomba_eventos_timestamp ON bomba_eventos(timestamp);
+CREATE INDEX idx_bomba_eventos_evento ON bomba_eventos(evento);
+
+-- Criar view para relatório mensal (facilita as consultas)
+CREATE VIEW relatorio_mensal AS
+SELECT 
+    DATE_TRUNC('month', timestamp) AS mes,
+    COUNT(*) FILTER (WHERE evento = 'LIGOU') AS total_ligadas,
+    COUNT(*) FILTER (WHERE evento = 'DESLIGOU') AS total_desligadas,
+    SUM(duracao_segundos) / 3600.0 AS horas_funcionamento,
+    SUM(volume_m3) AS volume_total_m3
+FROM bomba_eventos
+WHERE evento = 'DESLIGOU'
+GROUP BY DATE_TRUNC('month', timestamp)
+ORDER BY mes DESC;
